@@ -1,0 +1,37 @@
+/*
+ * DrvEEPROM.c
+ *
+ *  Created on: 04.06.2020
+ *      Author: Dirk
+ */
+#include "DrvEEPROM.h"
+
+uint32_t readFromEEPROM (uint32_t address)
+{
+      return (*(__IO uint32_t *)address);
+}
+
+
+void writeToEEPROM (uint32_t address, uint32_t value)
+{
+  HAL_StatusTypeDef flash_ok = HAL_ERROR;
+  while (flash_ok != HAL_OK)
+  {
+    flash_ok = HAL_FLASHEx_DATAEEPROM_Unlock();
+  }
+  flash_ok = HAL_ERROR;
+  while (flash_ok != HAL_OK)
+  {
+    flash_ok = HAL_FLASHEx_DATAEEPROM_Erase (address); // Erase one word (4 bytes)
+  }
+  flash_ok = HAL_ERROR;
+  while (flash_ok != HAL_OK)
+  {
+    flash_ok = HAL_FLASHEx_DATAEEPROM_Program (FLASH_TYPEPROGRAMDATA_WORD, address, value);
+  }
+  flash_ok = HAL_ERROR;
+  while (flash_ok != HAL_OK)
+  {
+    flash_ok = HAL_FLASHEx_DATAEEPROM_Lock ();
+  }
+}

@@ -1,0 +1,170 @@
+/*
+ * DrvLT4041.c
+ *
+ *  Created on: 01.06.2020
+ *      Author: Dirk
+ */
+#include "adc.h"
+#include "gpio.h"
+#include "DrvLT4041.h"
+#include "DrvEEPROM.h"
+
+uint32_t IMon_Get(void)
+{
+	uint32_t value;
+	  /* Wait for end of conversion */
+	    if (HAL_ADC_PollForConversion(&hadc, 100) != HAL_OK)
+	    {
+	      /* End Of Conversion flag not set on time */
+	      Error_Handler();
+	    }
+
+
+	    /* Check if the continuous conversion of regular channel is finished */
+	    if ((HAL_ADC_GetState(&hadc) & HAL_ADC_STATE_REG_EOC) == HAL_ADC_STATE_REG_EOC)
+	    {
+	        /*##-6- Get the converted value of regular channel  ########################*/
+	        value = (uint32_t)HAL_ADC_GetValue(&hadc);
+	    } else
+	    	return ADCERROR;
+
+	    if (value > LOWCURRENT_LIMIT)
+	    		return LOWCURRENT;
+	    else if ((value > MEDIUMCURRENT_LIMIT) && (value <= LOWCURRENT_LIMIT))
+	    		return MEDCURRENT;
+	    else if ((value > HIGHCURRENT_LIMIT) && (value <= MEDIUMCURRENT_LIMIT))
+	    		return HIGHCURRENT;
+	    else if ((value > VERYHIGHCURRENT_LIMIT) && (value <= HIGHCURRENT_LIMIT))
+	    	    return VERYHIGHCURRENT;
+	    else if (value <= VERYHIGHCURRENT_LIMIT)
+	    		return ULTRAHIGHCURRENT;
+	    else
+	    		return ADCERROR;
+}
+
+
+void EnterStopMode(void)
+{
+    /* Disable debug in stop mode to reduce powerconsumption */
+    HAL_DBGMCU_DisableDBGStopMode();
+    /* Enter Stop Mode */
+    HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
+    /* Configures system clock after wake-up from STOP */
+    SystemClock_Config();
+}
+
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	/* Check wich pin was triggered */
+	/* Check current state */
+
+	/* read previous state of the unit from eePROM */
+	prev_state = readFromEEPROM(EEPROM_BASE_ADDR + STATE_BACKUP_OFFSET);
+
+	switch (GPIO_Pin)
+	{
+		case BUTTON_Pin:
+			if (GET_DISCONNECT_STATE() == 0) // Means USB plug is connected and unit was shut down by button
+			{
+				// Previous state must be OFF_powered
+				// Check if in the meantime the USB plug was removed
+				VIN_ENABLE();
+				HAL_Delay(10);
+				if(GET_POWER_GOOD() == 1)
+				{
+					state = ON_powered;
+					// ToDo: Implementation switch on
+					CHARGER_ON();
+					BOOSTER_ON();
+					POWER_GOOD_2RPI_ON();
+				}
+				else
+				{
+					// No power, back to off mode
+					VIN_DISABLE();
+					state = OFF_unpowered;
+				}
+			}
+			else if (prev_state == ON_powered)
+			{
+				state = OFF_powered;
+				// ToDo: Implementation to shut down
+				CHARGER_OFF();
+				POWER_GOOD_2RPI_OFF();
+				HAL_Delay(5000);
+				BOOSTER_OFF();
+				VIN_DISABLE();
+			}
+			else
+			{
+				// Do nothing because unit is not powered
+			}
+			break;
+
+// Power Good pin cannot be triggered if the unit is off and powered because STM32 forces the PFI input of the LTC4041
+// to be low. In this case if the unit is unplugged while in disconnect mode (RasPI OFF) the SCap will be discharged.
+// If it will be replugged within V_Cap > 1.8V nothing happens
+// If it is discharged to < 1.8V the STM32 will reboot in correct state as soon as the power is applied.
+
+
+		case POWER_GOOD_Pin:
+			if (GET_POWER_GOOD() == 1)	/* Power good wakes up at both edges, need to find out which edge triggered */
+			{
+				if(prev_state == OFF_unpowered || prev_state == OFF_powered ) // OFF_powered added for consistency. Cannot happen.
+				{
+					state = OFF_powered;
+					// ToDo: Implementation power returned to switched off unit
+					CHARGER_ON();
+					BOOSTER_ON();
+					POWER_GOOD_2RPI_ON();
+				}
+				else if (prev_state == ON_powered || prev_state == ON_unpowered)
+				{
+					state = ON_powered;
+					// ToDo: Implementation power returned to switched on unit
+					CHARGER_ON();
+					BOOSTER_ON();
+					POWER_GOOD_2RPI_ON();
+				}
+				else
+				{
+					// Should never go here
+				}
+			}
+			else if (GET_POWER_GOOD() == 0)
+			{
+				if(prev_state == ON_powered)
+				{
+					state = ON_unpowered;
+					// ToDo: Implementation shutdown
+					CHARGER_OFF();
+					POWER_GOOD_2RPI_OFF();
+					HAL_Delay(5000);
+					BOOSTER_OFF();
+					VIN_DISABLE();
+				}
+				else if(prev_state == OFF_powered) // Cannot happen added for consistency.
+				{
+					state = OFF_unpowered;
+				}
+				else
+				{
+					// Should never go here
+				}
+			}
+			else
+			{
+				// Should never go here
+			}
+			break;
+
+		default:
+			break;
+	}
+
+	/* Backup state */
+	writeToEEPROM(EEPROM_BASE_ADDR + STATE_BACKUP_OFFSET, state);
+	/* Back to stop mode */
+	EnterStopMode();
+}

@@ -1,0 +1,54 @@
+/*
+ * DrvLT4041.h
+ *
+ *  Created on: 01.06.2020
+ *      Author: Dirk
+ */
+
+#ifndef DRVLT4041_H_
+#define DRVLT4041_H_
+
+#include "main.h"
+
+#define ADCERROR 				0xFFFFFFFF
+
+#define LOWCURRENT_LIMIT		3450 // 100mA
+#define MEDIUMCURRENT_LIMIT		2660 // 300mA
+#define HIGHCURRENT_LIMIT		1445 // 600mA
+#define VERYHIGHCURRENT_LIMIT	300	 // 900mA
+
+#define LOWCURRENT				0
+#define MEDCURRENT				1
+#define HIGHCURRENT				2
+#define	VERYHIGHCURRENT			3
+#define ULTRAHIGHCURRENT		4
+
+
+#define CHARGER_ON()			HAL_GPIO_WritePin(NCHARGER_ENB_GPIO_Port, NCHARGER_ENB_Pin, GPIO_PIN_RESET)
+#define CHARGER_OFF()			HAL_GPIO_WritePin(NCHARGER_ENB_GPIO_Port, NCHARGER_ENB_Pin, GPIO_PIN_SET)
+
+#define BOOSTER_ON()			HAL_GPIO_WritePin(NBOOSTER_ENB_GPIO_Port, NBOOSTER_ENB_Pin, GPIO_PIN_RESET)
+#define BOOSTER_OFF()			HAL_GPIO_WritePin(NBOOSTER_ENB_GPIO_Port, NBOOSTER_ENB_Pin, GPIO_PIN_SET)
+
+#define VIN_ENABLE()			HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_RESET)
+#define VIN_DISABLE()			HAL_GPIO_WritePin(STATUS_LED_GPIO_Port, STATUS_LED_Pin, GPIO_PIN_SET)
+
+#define POWER_GOOD_2RPI_ON()	HAL_GPIO_WritePin(POWER_GOOD_GPIO_Port, POWER_GOOD_Pin, GPIO_PIN_SET)
+#define POWER_GOOD_2RPI_OFF()	HAL_GPIO_WritePin(POWER_GOOD_GPIO_Port, POWER_GOOD_Pin, GPIO_PIN_RESET)
+
+
+#define GET_POWER_GOOD()		HAL_GPIO_ReadPin(PWR_GOOD_GPIO_Port, PWR_GOOD_Pin)
+
+#define GET_CAP_CHARGED()		HAL_GPIO_ReadPin(CAP_CHARGED_GPIO_Port, CAP_CHARGED_Pin)
+
+#define GET_SHUTDOWN_ACK()		HAL_GPIO_ReadPin(SHTDN_ACK_GPIO_Port, SHTDN_ACK_Pin)
+
+uint32_t state, prev_state;
+
+uint32_t IMon_Get(void); /* Load current at VIN */
+void EnterStopMode(void);
+
+
+
+
+#endif /* DRVLT4041_H_ */
