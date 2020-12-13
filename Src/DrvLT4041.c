@@ -182,7 +182,7 @@ void HAL_GPIO_EXTI_Callback(volatile uint16_t GPIO_Pin)
 						// No changes in signals
 
 					}
-					else if(prev_state == APPshtdn_powered)
+					else if(prev_state == APPshtdn_powered || prev_state == APPshtdn_unpowered)
 					{
 						state = APPshtdn_unpowered;
 						// No changes in signals
