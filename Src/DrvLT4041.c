@@ -64,8 +64,23 @@ void Shutdown(void)
 /* Power up raspberry pi */
 void RunMode(void)
 {
+	uint8_t i;
 	STATUS_LED_ON();
-	CHARGER_BOOSTER_ON();
+	for(i=0;i<5;i++)
+	{
+		CHARGER_BOOSTER_ON();
+		delay_ms(5);
+		CHARGER_BOOSTER_OFF();
+
+		asm volatile("NOP");
+		asm volatile("NOP");
+		asm volatile("NOP");
+		asm volatile("NOP");
+		asm volatile("NOP");
+		asm volatile("NOP");
+
+		CHARGER_BOOSTER_ON();
+	}
     delay_ms(POWER_ON_HOLD);
 	POWER_GOOD_2RPI_ON();
 	delay_ms(200);
